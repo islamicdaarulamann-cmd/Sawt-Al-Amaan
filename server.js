@@ -1,13 +1,22 @@
 const http = require('http');
 const { WebSocketServer } = require('ws');
+const QRCode = require('qrcode');
 
 const PORT = process.env.PORT || 3000;
 const sessions = new Map();
 
-const server = http.createServer((req, res) => {
-  const url = new URL(req.url, `http://${req.headers.host}`);
+const server = http.createServer(async (req, res) => {
+  const url = new URL(req.url, `https://${req.headers.host}`);
 
   if (url.pathname.startsWith('/join/')) {
+    const joinUrl = `https://${req.headers.host}${req.url}`;
+    let qrDataUri = '';
+    try {
+      qrDataUri = await QRCode.toDataURL(joinUrl, { width: 400, margin: 2 });
+    } catch (e) {
+      console.error('QR generation error:', e);
+    }
+
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
     res.end(`<!DOCTYPE html>
 <html lang="en">
@@ -37,6 +46,10 @@ const server = http.createServer((req, res) => {
   input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; height: 6px; background: #334155; border-radius: 999px; outline: none; }
   input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: #10b981; cursor: pointer; }
   #reconnectBtn { background: transparent; border: 1px solid #475569; color: #f8fafc; padding: 10px 20px; font-weight: 600; border-radius: 12px; cursor: pointer; display: none; }
+  .qr-section { margin-top: 24px; width: 100%; display: flex; flex-direction: column; align-items: center; border-top: 1px solid #334155; padding-top: 20px; }
+  .qr-container { background: #ffffff; padding: 12px; border-radius: 16px; margin: 12px 0 8px 0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2); }
+  #qrCodeImg { width: 150px; height: 150px; display: block; border-radius: 8px; }
+  .qr-sublabel { font-size: 0.75rem; color: #94a3b8; font-weight: 500; }
 </style>
 </head>
 <body>
@@ -57,6 +70,14 @@ const server = http.createServer((req, res) => {
         <input type="range" id="volume" min="0" max="100" value="80" />
       </div>
       <button id="reconnectBtn">Reconnect</button>
+    </div>
+
+    <div class="qr-section">
+      <span class="volume-label">Share Tour QR</span>
+      <div class="qr-container">
+        <img id="qrCodeImg" src="${qrDataUri}" alt="Tour QR Code" />
+      </div>
+      <span class="qr-sublabel">Scan to join this tour</span>
     </div>
   </div>
 <script>
@@ -213,7 +234,7 @@ wss.on('connection', (ws, req) => {
   ws.isAlive = true;
   ws.on('pong', () => { ws.isAlive = true; });
 
-  const url = new URL(req.url, `http://${req.headers.host}`);
+  const url = new URL(req.url, `https://${req.headers.host}`);
   const pathname = url.pathname;
   const code = url.searchParams.get('code');
   const token = url.searchParams.get('token');
@@ -258,7 +279,7 @@ wss.on('connection', (ws, req) => {
         targetCode = sCode;
         break;
       }
-    }
+        }
 
     if (targetSession) {
       targetSession.listeners.add(ws);
