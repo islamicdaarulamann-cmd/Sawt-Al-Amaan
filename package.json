@@ -1,0 +1,12 @@
+{
+  "name": "tourvoice-relay",
+  "version": "1.0.0",
+  "description": "Cloud relay server for TourVoice",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "ws": "^8.16.0"
+  }
+}
